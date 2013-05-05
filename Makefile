@@ -17,3 +17,9 @@ wave.o : wave.cc wave.h
 
 transform.o : transform.cc transform.h wave.h
 	g++ $(CFLAGS) -c -o transform.o transform.cc
+
+test.o : test.cc transform.h wave.h
+	g++ $(CFLAGS) -c -o test.o test.cc
+
+test : test.o wave.o wave.h transform.o
+	g++ $(LFLAGS) -o test test.o wave.o transform.o
