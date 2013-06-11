@@ -157,7 +157,73 @@ void fastIDCT(double *in, uint32 *out, int N, int bits){
     out[i] |= (uint32)round(dctBuffLeft[i*2+1].real()) << 16;
   }
 }
-      
+
+complex<double> mdctBuffLeft[MAX_BLOCK_SIZE/2];
+complex<double> mdctBuffRight[MAX_BLOCK_SIZE/2];
+void fastMDCT(uint32 *in, double *out, int N, int bits){
+  unsigned long threadLeft, threadRight;
+  unsigned int n3 = N*3/4, n1 = N/4, n2 = N/2;
+  // Left channel.
+  rep(k, 0, n1) mdctBuffLeft[k] = 0;
+
+  rep(k, 0, n1){
+    double re = 0, im = 0;
+
+    // Real part.
+    if(2*k < n1)
+      re = -getLeftSample(in[2*k+n3]);
+    else
+      re = getLeftSample(in[2*k-n1]);
+    if(N-2*k-1 < n1)
+      re -= -getLeftSample(in[N-2*k-1 + n3]);
+    else
+      re -= getLeftSample(in[N-2*k-1 - n1]);
+
+    // Imaginary part.
+    if(n2+2*k < n1)
+      im = -getLeftSample(in[n2+2*k + n3]);
+    else
+      im = getLeftSample(in[n2+2*k - n1]);
+    if(n2-2*k-1 < n1)
+      im -= -getLeftSample(in[n2-2*k-1 + n3]);
+    else
+      im -= getLeftSample(in[n2-2*k-1 - n1]);
+
+    //printf("%f %f\n", re, im);
+
+    mdctBuffLeft[k] = complex<double>(re, im) * exp((j*2.0*PI/(double)N)* (k+1.0/8));
+  }
+
+  fft_params p1(mdctBuffLeft, n1, bits-2, false);
+  pthread_create(&threadLeft, NULL, fft, (void*)&p1);
+
+  //Right channel.
+  rep(i, 0, N/2) mdctBuffRight[i] = 0;
+
+  rep(i, 0, N/2){
+    mdctBuffRight[i] = getRightSample(in[2*i]);
+    mdctBuffRight[i] -= getRightSample(in[N/2+2*i]) * exp(-i*2*PI/(double)N*(i+1/8)) ;
+  }
+
+  fft_params p2(mdctBuffRight, n1, bits-1, false);
+  pthread_create(&threadRight, NULL, fft, (void*)&p2);
+
+  // Wait for both threads to finish.
+  void *dummy;
+  pthread_join(threadLeft, &dummy);
+  pthread_join(threadRight, &dummy);
+  // Write data.
+  rep(m, 0, n1){
+    printf("(%f,%f)\n", mdctBuffLeft[m].real(), mdctBuffLeft[m].imag());
+    out[2*m] = (mdctBuffLeft[m]*exp(j*2.0*PI*(m+1.0/8)/double(N))).real();
+    out[2*m+1] = (mdctBuffLeft[n1-m-1]*exp(j*2.0*PI*(n1-m-1+1.0/8)/double(N))).imag();
+  }
+  /*rep(i, 0, n1){
+    out[2*i+N] = mdctBuffRight[i].real();
+    out[2*i+1+N] = mdctBuffRight[i].imag();
+  }*/
+}
+
 void createDCT(double *dct, int N){
   rep(l, 0, N){
     dct[l] = sqrt(1.0/N);
@@ -211,6 +277,18 @@ void slowDCT(uint32* block, complex<double> *out, int N){
     else {
       out[k] *= ck;
       out[k+N] *= ck;
+    }
+    //cout << out[k].real() << " " ;
+  }
+  //cout << endl;
+}
+void slowMDCT(uint32* block, double *out, int N){
+  rep(m, 0, N/2){
+    out[m] = 0;
+    out[m+N] = 0;
+    rep(k, 0, N){
+      out[m]   += (double)getLeftSample(block[k]) * cos(PI/(N*2.0)*(2*k+1+N/2)*(2*m+1));
+      out[m+N] += (double)getRightSample(block[k]) * cos(PI/(N*2.0)*(2*k+1+N/2)*(2*m+1));
     }
     //cout << out[k].real() << " " ;
   }

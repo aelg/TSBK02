@@ -14,8 +14,9 @@ struct Format{
 };
 
 
-int read_header(fstream &f, Format *fmt);
+int read_header(fstream &f, Format *fmt, bool noprint = false);
 uint32* read_to_memory(fstream &f, Format *fmt);
+void write_to_file(fstream &f, uint32 *data, Format *fmt);
 sample getRightSample(uint32 block);
 sample getLeftSample(uint32 block);
 void printRightChannel(uint32 *data);

@@ -36,6 +36,8 @@ void printBlock(double* block){
   cout << '\n';
 }
 
+int const mdct_len = 16;
+
 int main(int argc, char *argv[]){
   Format fmt;
   uint32 *data;
@@ -49,32 +51,51 @@ int main(int argc, char *argv[]){
   if(!read_header(f, &fmt)) return 1;
   if(!(data = read_to_memory(f, &fmt))) return 1;
 
-  printRightChannel(data);
-  //printLeftChannel(data);
+  //printRightChannel(data);
+  printLeftChannel(data);
 
   double outFast[block_size*2];
+  double outmdctSlow[mdct_len*2];
+  double outmdctFast[mdct_len*2];
   initFFT();
-  cout << "fastDCT" << endl;
+  cout << "slowMDCT" << endl;
+  slowMDCT(data, outmdctSlow, mdct_len);
+  rep(i, 0, mdct_len/2)
+    cout << outmdctSlow[i] << " ";
+  cout << endl;
+  rep(i, mdct_len, mdct_len*3/4)
+    cout << outmdctSlow[i] << " ";
+  cout << endl;
+  cout << "fastMDCT" << endl;
+  fastMDCT(data, outmdctFast, mdct_len, 4);
+  rep(i, 0, mdct_len/2)
+    cout << outmdctFast[i] << " ";
+  cout << endl;
+  rep(i, mdct_len, mdct_len*3/4)
+    cout << outmdctFast[i] << " ";
+  cout << endl;
   /*rep(i, 0, 2000){
     if(i%100 == 0) cout << i << endl;
     fastDCT(data + block_size*i, outFast, block_size, 12);
-  }*/
-  fastDCT(data, outFast, block_size, nbrBits);
-  rep(i, 0, block_size*2) cout << outFast[i] << " ";
-  cout << "fastDCT done" << endl;
-  cout << "fastIDCT" << endl;
-  uint32 dataOut[block_size];
-  fastIDCT(outFast, (uint32*)&dataOut, block_size, nbrBits);
-  rep(i, 0, block_size) cout << getLeftSample(dataOut[i]) << " ";
-  cout << endl;
-  cout << "fastIDCT done" << endl;
-  cout << "slowDCT" << endl;
-  complex<double> complexOutSlow[block_size];
-  slowDCT(data, complexOutSlow, block_size);
-  cout << "slowDCT done" << endl;
-  rep(i, 0, block_size) if (abs(outFast[i+block_size] - complexOutSlow[i].real()) > 0.0001) cout << outFast[i+block_size] - complexOutSlow[i].real() << endl;
+    }*/
+  /*fastDCT(data, outFast, block_size, nbrBits);
+    rep(i, 0, block_size*2) cout << outFast[i] << " ";
+    cout << "fastDCT done" << endl;
+    cout << "fastIDCT" << endl;
+    uint32 dataOut[block_size];
+    fastIDCT(outFast, (uint32*)&dataOut, block_size, nbrBits);
+    rep(i, 0, block_size) cout << getLeftSample(dataOut[i]) << " ";
+    cout << endl;
+    cout << "fastIDCT done" << endl;
+    cout << "slowDCT" << endl;
+    complex<double> complexOutSlow[block_size];
+    slowDCT(data, complexOutSlow, block_size);
+    cout << "slowDCT done" << endl;
+    rep(i, 0, block_size) if (abs(outFast[i+block_size] - complexOutSlow[i].real()) > 0.0001) cout << outFast[i+block_size] - complexOutSlow[i].real() << endl;*/
+
+
 
   free(data);
   return 0;
 }
-    
+
